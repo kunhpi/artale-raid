@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Artale 突襲排班表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky:#e6f2fb; --panel:#ffffff; --ink:#1d2b3c; --muted:#5d6f85; --line:#c3d6e8;
+  --leaf:#3e9b4f; --leaf-soft:#d6efd9; --gold:#f2b632; --gold-ink:#5a3d00; --mush:#e8762d;
+  --heat:62,155,79; --me:#2f6fd6; --me-soft:#dbe7fb; --row:#f4f9fd;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --sky:#0f1a26; --panel:#172535; --ink:#e7eef6; --muted:#9db0c4; --line:#2c4258;
+    --leaf:#5cc46d; --leaf-soft:#1f3d27; --gold:#f2b632; --gold-ink:#2b1d00; --mush:#f08a45;
+    --heat:92,196,109; --me:#7aa8ff; --me-soft:#1d2f4d; --row:#1b2b3d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --sky:#0f1a26; --panel:#172535; --ink:#e7eef6; --muted:#9db0c4; --line:#2c4258;
+  --leaf:#5cc46d; --leaf-soft:#1f3d27; --gold:#f2b632; --gold-ink:#2b1d00; --mush:#f08a45;
+  --heat:92,196,109; --me:#7aa8ff; --me-soft:#1d2f4d; --row:#1b2b3d;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top: env(safe-area-inset-top, 0px)}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+.dot{font-family:"DotGothic16","Noto Sans TC",system-ui,sans-serif}
+
+/* pixel frame */
+.px{background:var(--panel);position:relative;margin:4px;
+  box-shadow:0 -4px 0 0 var(--ink),0 4px 0 0 var(--ink),-4px 0 0 0 var(--ink),4px 0 0 0 var(--ink),4px 4px 0 4px rgba(0,0,0,.12)}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{font-family:"DotGothic16","Noto Sans TC",sans-serif;font-weight:400;font-size:clamp(28px,6vw,42px);line-height:1.1;margin:0;letter-spacing:.02em}
+.sub{color:var(--muted);margin:6px 0 0;font-size:14px}
+
+.weeknav{display:flex;align-items:center;gap:8px}
+.weeknav .range{font-family:"DotGothic16","Noto Sans TC",sans-serif;font-size:18px;min-width:9.5em;text-align:center}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{background:var(--panel);border:3px solid var(--ink);padding:6px 12px;border-radius:0;font-weight:500}
+.btn:hover{background:var(--row)}
+.btn.primary{background:var(--leaf);color:#fff;border-color:var(--ink)}
+.btn.small{padding:3px 10px;font-size:13px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--me);outline-offset:2px}
+
+.idbar{padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:22px}
+.idbar label{font-weight:700}
+.idbar input{font:inherit;color:var(--ink);background:var(--sky);border:3px solid var(--ink);padding:6px 10px;width:12em;border-radius:0}
+.idbar .hint{color:var(--muted);font-size:13px;flex-basis:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--line);background:var(--sky);padding:2px 10px;font-size:13px}
+.chip:hover{border-color:var(--ink)}
+.me-tag{display:inline-flex;align-items:center;gap:8px;font-weight:700}
+.me-swatch{width:14px;height:14px;background:var(--me);display:inline-block}
+.status{font-size:13px;color:var(--muted);margin-left:auto}
+.status.err{color:var(--mush);font-weight:500}
+
+.best{padding:14px 16px 16px;margin-bottom:22px}
+.best h2,.board h2{font-size:17px;margin:0 0 10px;font-weight:700}
+.bestlist{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.bestlist li{border:2px solid var(--line);padding:6px 10px;background:var(--row);font-size:14px;display:flex;gap:8px;align-items:center}
+.bestlist li.full{background:var(--gold);color:var(--gold-ink);border-color:var(--ink)}
+.bestlist .n{font-family:"DotGothic16",sans-serif;font-size:16px}
+.empty{color:var(--muted);font-size:14px;margin:0}
+
+.board{padding:14px 0 6px}
+.board h2{padding:0 16px}
+.scroller{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:420px}
+th,td{padding:0;text-align:center;border-bottom:1px solid var(--line)}
+thead th{font-size:13px;font-weight:700;padding:8px 4px;position:sticky;top:0;background:var(--panel);z-index:1;white-space:nowrap}
+thead th.person{max-width:5.5em;overflow:hidden;text-overflow:ellipsis}
+thead th.me-col{color:var(--me)}
+th.time{text-align:left;padding:0 10px 0 16px;font-weight:500;white-space:nowrap;font-size:14px;width:1%}
+tr.day td{background:var(--sky);text-align:left;padding:10px 16px 6px;font-weight:700;border-bottom:2px solid var(--ink)}
+tr.day.today td{background:var(--leaf-soft)}
+tr.day .date{font-family:"DotGothic16",sans-serif;font-weight:400;font-size:17px;margin-right:8px}
+tr.day .period{color:var(--muted);font-weight:500;font-size:13px}
+td.count{width:4.2em;font-family:"DotGothic16",sans-serif;font-size:16px}
+td.count.full{background:var(--gold)!important;color:var(--gold-ink)}
+td.cell{height:40px;min-width:46px}
+.mark{display:inline-block;width:22px;height:22px;border:2px solid var(--line)}
+.mark.on{background:var(--leaf);border-color:var(--leaf)}
+td.cell.me-cell{background:var(--me-soft)}
+td.cell.me-cell button{width:100%;height:40px;border:0;background:transparent;display:flex;align-items:center;justify-content:center}
+td.cell.me-cell .mark{border-color:var(--me)}
+td.cell.me-cell .mark.on{background:var(--me);border-color:var(--me)}
+td.cell.me-cell button:hover .mark{box-shadow:0 0 0 3px var(--me-soft),0 0 0 5px var(--me)}
+tr.sep th,tr.sep td{border-top:2px dashed var(--line)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px 8px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;display:inline-block}
+.notice{padding:12px 16px;margin-bottom:18px;font-size:14px}
+[hidden]{display:none!important}
+@media (max-width:560px){
+  .wrap{padding:14px 10px 40px}
+  .idbar input{width:100%}
+  .status{margin-left:0}
+  th.time{padding-left:10px}
+  tr.day td{padding-left:10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Artale 突襲排班表</h1>
+      <p class="sub">每週二到下週一，勾選你能上線的時段，人最多的時段就去打。</p>
+    </div>
+    <div class="weeknav" role="group" aria-label="切換週次">
+      <button class="btn small" id="prevWeek" aria-label="上一週">◀</button>
+      <div class="range" id="weekRange">—</div>
+      <button class="btn small" id="nextWeek" aria-label="下一週">▶</button>
+      <button class="btn small" id="thisWeek">本週</button>
+    </div>
+  </header>
+
+  <div class="px notice" id="offline" hidden>
+    目前連不到伺服器，大家的勾選暫時無法同步。請檢查網路後重新整理。
+  </div>
+
+  <section class="px idbar" id="idbar" aria-label="暱稱"></section>
+
+  <section class="px best" aria-labelledby="bestTitle">
+    <h2 id="bestTitle">本週哪天人最多</h2>
+    <ul class="bestlist" id="bestList"></ul>
+    <p class="empty" id="bestEmpty">還沒有人勾選，先輸入暱稱，把能上線的時段點起來。</p>
+  </section>
+
+  <section class="px board" aria-labelledby="boardTitle">
+    <h2 id="boardTitle">每小時上線表</h2>
+    <div class="legend">
+      <span><i style="background:var(--me)"></i>你的勾選（點一下切換）</span>
+      <span><i style="background:var(--leaf)"></i>朋友可上線</span>
+      <span><i style="background:var(--gold)"></i>所有人都可以</span>
+    </div>
+    <div class="scroller"><table id="grid"></table></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const DAY_NAMES = ['二','三','四','五','六','日','一']; // Tue..Mon
+  const WEEKDAY_HOURS = [21,22,23];
+  const WEEKEND_HOURS = [14,15,21,22,23];
+  const hoursFor = i => (i===4||i===5) ? WEEKEND_HOURS : WEEKDAY_HOURS;
+  const fmtHour = h => `${String(h).padStart(2,'0')}:00–${String((h+1)%24).padStart(2,'0')}:00`;
+  const NICK_KEY = 'artale-raid-nick';
+
+  // ---------- week math ----------
+  function tuesdayOf(d){
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const off = (x.getDay() - 2 + 7) % 7;
+    x.setDate(x.getDate() - off);
+    return x;
+  }
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const md = d => `${d.getMonth()+1}/${d.getDate()}`;
+  let weekOffset = 0;
+  function weekStart(){ const t = tuesdayOf(new Date()); t.setDate(t.getDate() + weekOffset*7); return t; }
+  function dayDate(i){ const d = weekStart(); d.setDate(d.getDate()+i); return d; }
+  function weekId(){ return ymd(weekStart()); }
+
+  // ---------- nickname <-> doc id ----------
+  function nickToId(n){
+    return 'n' + Array.from(new TextEncoder().encode(n)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function storeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function storeSet(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){} }
+
+  // ---------- state ----------
+  let db = true, pollTimer = null, canWrite = true;
+  const API = '/api/schedule';
+  let nick = storeGet(NICK_KEY) || '';
+  let people = new Map();          // id -> {name, slots:Set}
+  let mySlots = new Set();
+  let myDirty = false, saving = false, saveTimer = null, savingWeek = null;
+  let statusText = '', statusErr = false;
+
+  // ---------- DOM refs ----------
+  const $ = id => document.getElementById(id);
+  const idbar = $('idbar'), grid = $('grid'), bestList = $('bestList'), bestEmpty = $('bestEmpty');
+
+  function setStatus(t, err){ statusText = t; statusErr = !!err; const s = document.querySelector('.status'); if(s){ s.textContent = t; s.classList.toggle('err', statusErr); } }
+
+  // ---------- identity bar ----------
+  function renderIdbar(){
+    idbar.replaceChildren();
+    if(!nick){
+      const lab = document.createElement('label'); lab.htmlFor='nickInput'; lab.textContent='你的暱稱';
+      const inp = document.createElement('input'); inp.id='nickInput'; inp.maxLength=12; inp.placeholder='例如：楓葉小菇'; inp.autocomplete='off';
+      const go = document.createElement('button'); go.className='btn primary'; go.textContent='開始勾選';
+      const submit = () => { const v = inp.value.trim(); if(!v){ inp.focus(); return; } setNick(v); };
+      go.addEventListener('click', submit);
+      inp.addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
+      idbar.append(lab, inp, go);
+      const names = [...people.values()].map(p=>p.name);
+      if(names.length){
+        const wrap = document.createElement('div'); wrap.className='chips';
+        const t = document.createElement('span'); t.className='hint'; t.style.flexBasis='auto'; t.textContent='或直接選你的名字：';
+        wrap.append(t);
+        names.forEach(n => { const c=document.createElement('button'); c.className='chip'; c.textContent=n; c.addEventListener('click',()=>setNick(n)); wrap.append(c); });
+        idbar.append(wrap);
+      }
+      const h = document.createElement('p'); h.className='hint'; h.style.margin='0';
+      h.textContent='輸入暱稱後才能勾選。用同一個暱稱，在不同裝置也能改到同一列。';
+      idbar.append(h);
+      return;
+    }
+    const tag = document.createElement('span'); tag.className='me-tag';
+    const sw = document.createElement('i'); sw.className='me-swatch';
+    const nm = document.createElement('span'); nm.textContent = nick;
+    tag.append(sw, document.createTextNode('目前身分：'), nm);
+    const sw2 = document.createElement('button'); sw2.className='btn small'; sw2.textContent='換暱稱';
+    sw2.addEventListener('click', () => { flushNow(); setNick(''); });
+    const clr = document.createElement('button'); clr.className='btn small'; clr.textContent='清空本週勾選';
+    clr.addEventListener('click', () => { if(!mySlots.size) return; mySlots = new Set(); scheduleSave(); renderAll(); });
+    const st = document.createElement('span'); st.className='status'; st.textContent = statusText; st.classList.toggle('err', statusErr);
+    idbar.append(tag, sw2, clr, st);
+  }
+
+  function setNick(n){
+    nick = n; storeSet(NICK_KEY, n || null);
+    myDirty = false;
+    syncMineFromPeople();
+    setStatus('');
+    renderAll();
+  }
+
+  function myId(){ return nick ? nickToId(nick) : null; }
+  function syncMineFromPeople(){
+    const p = myId() && people.get(myId());
+    mySlots = new Set(p ? p.slots : []);
+  }
+
+  // ---------- grid ----------
+  function columns(){
+    const id = myId();
+    const others = [...people.entries()].filter(([k])=>k!==id).map(([k,v])=>({id:k,name:v.name,slots:v.slots}))
+      .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+    const cols = [];
+    if(nick) cols.push({id, name:nick, slots:mySlots, me:true});
+    return cols.concat(others);
+  }
+
+  function renderGrid(){
+    const cols = columns();
+    const total = cols.length;
+    const todayStr = ymd(new Date());
+    grid.replaceChildren();
+    const thead = document.createElement('thead'); const hr = document.createElement('tr');
+    const h0 = document.createElement('th'); h0.textContent='時段'; h0.style.textAlign='left'; h0.style.paddingLeft='16px';
+    const h1 = document.createElement('th'); h1.textContent='人數';
+    hr.append(h0,h1);
+    cols.forEach(c => { const th=document.createElement('th'); th.className='person'+(c.me?' me-col':''); th.textContent = c.me ? `${c.name}（你）` : c.name; th.title=c.name; hr.append(th); });
+    if(!cols.length){ const th=document.createElement('th'); th.textContent='還沒有人填寫'; th.style.color='var(--muted)'; th.style.fontWeight='500'; hr.append(th); }
+    thead.append(hr); grid.append(thead);
+
+    const tb = document.createElement('tbody');
+    for(let i=0;i<7;i++){
+      const d = dayDate(i);
+      const dr = document.createElement('tr'); dr.className='day'+(ymd(d)===todayStr?' today':'');
+      const td = document.createElement('td'); td.colSpan = 2 + Math.max(cols.length,1);
+      const ds = document.createElement('span'); ds.className='date'; ds.textContent = md(d);
+      const wk = document.createElement('span'); wk.textContent = `週${DAY_NAMES[i]}`;
+      const pe = document.createElement('span'); pe.className='period'; pe.textContent = (i===4||i===5) ? '　下午・晚上' : '　晚上';
+      td.append(ds, wk, pe); if(ymd(d)===todayStr){ const t=document.createElement('span'); t.className='period'; t.textContent='　今天'; td.append(t); }
+      dr.append(td); tb.append(dr);
+
+      const hrs = hoursFor(i);
+      hrs.forEach((h, idx) => {
+        const key = `${i}-${h}`;
+        const tr = document.createElement('tr');
+        if(idx>0 && hrs[idx-1] < 20 && h > 20) tr.className='sep';
+        const th = document.createElement('th'); th.className='time'; th.scope='row'; th.textContent = fmtHour(h);
+        const n = cols.filter(c=>c.slots.has(key)).length;
+        const cnt = document.createElement('td'); cnt.className='count';
+        cnt.textContent = total ? `${n}/${total}` : '0';
+        if(total>=2 && n===total) cnt.classList.add('full');
+        else if(n>0 && total) cnt.style.background = `rgba(var(--heat), ${0.12 + 0.5*n/total})`;
+        tr.append(th, cnt);
+        cols.forEach(c => {
+          const cell = document.createElement('td'); cell.className='cell'+(c.me?' me-cell':'');
+          const on = c.slots.has(key);
+          if(c.me){
+            const b = document.createElement('button');
+            b.setAttribute('aria-pressed', on ? 'true':'false');
+            b.setAttribute('aria-label', `週${DAY_NAMES[i]} ${fmtHour(h)} ${on?'可以上線':'無法上線'}`);
+            const m = document.createElement('span'); m.className='mark'+(on?' on':'');
+            b.append(m);
+            b.addEventListener('click', () => toggle(key));
+            cell.append(b);
+          } else {
+            const m = document.createElement('span'); m.className='mark'+(on?' on':'');
+            m.setAttribute('aria-label', on ? `${c.name} 可以` : `${c.name} 不行`);
+            m.setAttribute('role','img');
+            cell.append(m);
+          }
+          tr.append(cell);
+        });
+        if(!cols.length){ tr.append(document.createElement('td')); }
+        tb.append(tr);
+      });
+    }
+    grid.append(tb);
+  }
+
+  function renderBest(){
+    const cols = columns(); const total = cols.length;
+    const rows = [];
+    for(let i=0;i<7;i++){
+      let max = 0, hrs = [];
+      for(const h of hoursFor(i)){
+        const n = cols.filter(c=>c.slots.has(`${i}-${h}`)).length;
+        if(n>max){ max=n; hrs=[h]; } else if(n===max && n>0){ hrs.push(h); }
+      }
+      if(max>0) rows.push({i,n:max,hrs});
+    }
+    rows.sort((a,b)=> b.n-a.n || a.i-b.i);
+    const ranges = hrs => {
+      const out=[]; let s=hrs[0], p=hrs[0];
+      for(const h of hrs.slice(1)){ if(h===p+1){ p=h; continue; } out.push([s,p]); s=p=h; }
+      out.push([s,p]);
+      return out.map(([a,b])=>`${a}–${(b+1)%24===0?24:b+1}點`).join('、');
+    };
+    bestList.replaceChildren();
+    bestEmpty.hidden = rows.length>0;
+    rows.forEach(r => {
+      const li = document.createElement('li'); if(total>=2 && r.n===total) li.classList.add('full');
+      const n = document.createElement('span'); n.className='n'; n.textContent = `${r.n}/${total}`;
+      const t = document.createElement('span'); t.textContent = `${md(dayDate(r.i))} 週${DAY_NAMES[r.i]}`;
+      const hz = document.createElement('span'); hz.style.opacity='.75'; hz.style.fontSize='13px'; hz.textContent = ranges(r.hrs);
+      li.append(n,t,hz); bestList.append(li);
+    });
+  }
+
+  function renderWeek(){
+    const s = weekStart(), e = dayDate(6);
+    $('weekRange').textContent = `${md(s)}（二）– ${md(e)}（一）`;
+    $('thisWeek').disabled = weekOffset===0;
+  }
+
+  function renderAll(){ renderWeek(); renderIdbar(); renderBest(); renderGrid(); }
+
+  // ---------- editing ----------
+  function toggle(key){
+    if(!nick) return;
+    if(!canWrite){ setStatus('你目前只有檢視權限，無法勾選。', true); return; }
+    if(mySlots.has(key)) mySlots.delete(key); else mySlots.add(key);
+    scheduleSave();
+    renderBest(); renderGrid();
+  }
+
+  function scheduleSave(){
+    myDirty = true; savingWeek = weekId();
+    setStatus(db ? '儲存中…' : '未連線，無法儲存', !db);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 500);
+  }
+  function flushNow(){ clearTimeout(saveTimer); flush(); }
+
+  async function flush(){
+    if(!nick || saving || !myDirty) return;
+    saving = true; myDirty = false;
+    const wk = savingWeek || weekId();
+    const name = nick;
+    const slots = [...mySlots].sort();
+    try{
+      const r = await fetch(`${API}?week=${wk}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, slots }) });
+      if(!r.ok) throw new Error(String(r.status));
+      if(!myDirty) setStatus('已儲存');
+      $('offline').hidden = true;
+    }catch(e){
+      setStatus('儲存失敗，請再點一次試試。', true);
+    }
+    saving = false;
+    if(myDirty) flush();
+  }
+
+  // ---------- polling ----------
+  let loadSeq = 0;
+  async function load(){
+    const wk = weekId(); const seq = ++loadSeq;
+    try{
+      const r = await fetch(`${API}?week=${wk}`, { cache:'no-store' });
+      if(!r.ok) throw new Error(String(r.status));
+      const data = await r.json();
+      if(seq !== loadSeq || wk !== weekId()) return;
+      const next = new Map();
+      (data.people || []).forEach(v => {
+        const name = typeof v.name==='string' ? v.name.slice(0,12) : '';
+        if(!name) return;
+        const slots = new Set(Array.isArray(v.slots) ? v.slots.filter(x=>typeof x==='string') : []);
+        if(!slots.size) return;
+        next.set(nickToId(name), {name, slots});
+      });
+      people = next;
+      $('offline').hidden = true;
+      if(!myDirty && !saving) syncMineFromPeople();
+      renderAll();
+    }catch(e){
+      $('offline').hidden = false;
+    }
+  }
+  function subscribe(){
+    clearInterval(pollTimer);
+    people = new Map();
+    load();
+    pollTimer = setInterval(() => { if(!document.hidden) load(); }, 8000);
+  }
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+
+  function changeWeek(delta){
+    flushNow();
+    weekOffset = delta===0 ? 0 : weekOffset + delta;
+    myDirty = false; mySlots = new Set();
+    subscribe();
+    renderAll();
+  }
+  $('prevWeek').addEventListener('click', ()=>changeWeek(-1));
+  $('nextWeek').addEventListener('click', ()=>changeWeek(1));
+  $('thisWeek').addEventListener('click', ()=>changeWeek(0));
+  window.addEventListener('pagehide', flushNow);
+
+  renderAll();
+
+  subscribe();
+})();
+</script>
+</body>
+</html>
